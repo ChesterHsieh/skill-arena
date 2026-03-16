@@ -1,0 +1,43 @@
+{
+  "skill_name": "flink-skill",
+  "skill_type": "coding",
+  "code_language": "java",
+  "evals": [
+    {
+      "id": 1,
+      "category": "core",
+      "prompt": "Write a Flink DataStream job that reads JSON events from Kafka topic 'user-events', filters for event_type='purchase', uses a 5-minute tumbling window keyed by user_id to compute total spend, and writes results to Kafka topic 'purchase-summary'.",
+      "expected_output": "Complete executable Java code with KafkaSource, filter, keyBy, TumblingEventTimeWindows, aggregate, KafkaSink. Includes proper imports, main class, and watermark strategy.",
+      "assertions": [
+        {"type": "syntax_valid"},
+        {"type": "contains_pattern", "pattern": "TumblingEventTimeWindows|TumblingProcessingTimeWindows"},
+        {"type": "contains_pattern", "pattern": "KafkaSource|FlinkKafkaConsumer"},
+        {"type": "contains_pattern", "pattern": "keyBy"},
+        {"type": "contains", "value": "watermark"}
+      ]
+    },
+    {
+      "id": 2,
+      "category": "edge",
+      "prompt": "Implement a Flink job with late event handling: process click events with event time, allow up to 30 seconds late arrival, route late events to a side output stream for separate processing, and use a 1-minute sliding window with 30-second slides.",
+      "expected_output": "Code with BoundedOutOfOrdernessWatermarks, allowedLateness, sideOutputLateData, SlidingEventTimeWindows, getSideOutput. Explains trade-offs of lateness tolerance.",
+      "assertions": [
+        {"type": "syntax_valid"},
+        {"type": "contains_pattern", "pattern": "allowedLateness|sideOutput"},
+        {"type": "contains_pattern", "pattern": "SlidingEventTimeWindows|SlidingProcessingTimeWindows"},
+        {"type": "contains", "value": "late"}
+      ]
+    },
+    {
+      "id": 3,
+      "category": "error_diagnosis",
+      "prompt": "My Flink job keeps failing with this error: 'Checkpoint 1234 expired before completing. Discarding.' The job has 20 parallel operators and processes ~500K events/second. JobManager logs show task managers are slow to acknowledge. How do I diagnose and fix this?",
+      "expected_output": "Identifies root causes (slow operators, large state, GC pressure, network issues). Provides concrete diagnostic steps (check task manager metrics, backpressure dashboard, state size). Gives actionable fixes (increase checkpoint timeout, enable incremental checkpointing, tune state backend).",
+      "assertions": [
+        {"type": "all_steps_covered", "steps": ["checkpoint timeout", "state", "backpressure"]},
+        {"type": "contains_pattern", "pattern": "incremental|RocksDB|timeout"},
+        {"type": "quality", "rubric": "Does the response give concrete, actionable diagnostic steps rather than just listing generic possibilities?"}
+      ]
+    }
+  ]
+}

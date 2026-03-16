@@ -1,0 +1,46 @@
+{
+  "skill_name": "k8s-deploy-review",
+  "skill_type": "workflow",
+  "evals": [
+    {
+      "id": 1,
+      "category": "core",
+      "prompt": "Review this Kubernetes Deployment manifest:\n```yaml\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: api-server\n  namespace: production\nspec:\n  replicas: 1\n  selector:\n    matchLabels:\n      app: api-server\n  template:\n    metadata:\n      labels:\n        app: api-server\n    spec:\n      containers:\n      - name: api-server\n        image: myregistry/api-server:latest\n        ports:\n        - containerPort: 8080\n        env:\n        - name: DB_PASSWORD\n          value: 'supersecret123'\n```",
+      "expected_output": "Structured review covering: CRITICAL - DB_PASSWORD hardcoded in env (use Secret), CRITICAL - image:latest tag (use pinned digest), HIGH - no resource limits, HIGH - replicas:1 (no HA), HIGH - no liveness/readiness probes, MEDIUM - no observability labels. Final verdict: NO-GO with prioritized fix list.",
+      "assertions": [
+        {"type": "all_steps_covered", "steps": ["security", "reliability", "observability", "summary"]},
+        {"type": "step_order", "before": "security", "after": "summary"},
+        {"type": "step_order", "before": "reliability", "after": "summary"},
+        {"type": "contains_pattern", "pattern": "CRITICAL|critical|Critical"},
+        {"type": "contains_pattern", "pattern": "secret|Secret"},
+        {"type": "contains_pattern", "pattern": "latest"},
+        {"type": "quality", "rubric": "Does the review give a clear go/no-go verdict with severity-tagged findings, not just a list of issues?"}
+      ]
+    },
+    {
+      "id": 2,
+      "category": "partial",
+      "prompt": "You're mid-way through reviewing a K8s deployment. Security and reliability checks are done. The findings so far: CRITICAL - no network policy, HIGH - missing resource limits. Now complete the observability check and provide the final summary with go/no-go verdict for this deployment that runs a payment processing service.",
+      "expected_output": "Picks up from where left off. Checks observability: labels for service discovery, metrics port, structured logging. Summary acknowledges previous findings (CRITICAL network policy, HIGH resource limits) plus new observability findings. Gives NO-GO verdict for payment service given CRITICAL finding.",
+      "assertions": [
+        {"type": "step_present", "value": "observability"},
+        {"type": "step_present", "value": "summary"},
+        {"type": "contains_pattern", "pattern": "network policy|NetworkPolicy"},
+        {"type": "contains_pattern", "pattern": "no-go|NO-GO|not ready|not approved"},
+        {"type": "quality", "rubric": "Does the response correctly continue from the mid-review state without re-doing already completed gates?"}
+      ]
+    },
+    {
+      "id": 3,
+      "category": "edge",
+      "prompt": "Review this minimal manifest:\n```yaml\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: worker\nspec:\n  template:\n    spec:\n      containers:\n      - name: worker\n        image: busybox\n        command: ['sh', '-c', 'while true; do echo hello; sleep 10; done']\n```\nNote: this is a background worker, not user-facing. No service needed.",
+      "expected_output": "Handles incomplete manifest gracefully (missing namespace, selector, replicas). Notes this is a worker (adjusts reliability expectations - no readiness probe needed). Still flags: no resource limits, no namespace, missing selector, busybox image for production. Gives conditional verdict.",
+      "assertions": [
+        {"type": "all_steps_covered", "steps": ["security", "reliability", "summary"]},
+        {"type": "contains_pattern", "pattern": "namespace|missing|incomplete"},
+        {"type": "contains_pattern", "pattern": "resource|limit|request"},
+        {"type": "quality", "rubric": "Does the response handle the incomplete/minimal manifest gracefully without breaking, and adjust its expectations for a background worker vs a user-facing service?"}
+      ]
+    }
+  ]
+}

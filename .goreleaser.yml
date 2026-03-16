@@ -1,0 +1,74 @@
+version: 2
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: skill-arena
+    binary: skill-arena
+    env:
+      - CGO_ENABLED=0   # static binary, no libc dependency
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64   # skip: no practical demand yet
+    ldflags:
+      - -s -w  # strip debug info → smaller binary
+      - -X main.version={{.Version}}
+      - -X main.commit={{.ShortCommit}}
+      - -X main.date={{.Date}}
+
+archives:
+  - id: skill-arena
+    name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
+    formats:
+      - tar.gz
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
+    files:
+      - README.md
+      - LICENSE
+
+checksum:
+  name_template: "checksums.txt"
+  algorithm: sha256
+
+changelog:
+  sort: asc
+  use: github
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+      - Merge pull request
+      - Merge branch
+
+release:
+  github:
+    owner: skill-arena
+    name: skill-arena
+  name_template: "v{{ .Version }}"
+  draft: false
+  prerelease: auto   # tags like v1.0.0-beta.1 are marked pre-release automatically
+  footer: |
+    ## Install
+
+    **One-liner:**
+    ```bash
+    curl -sSL https://raw.githubusercontent.com/ChesterHsieh/skill-arena/main/install.sh | sh
+    ```
+
+    **Go install:**
+    ```bash
+    go install github.com/ChesterHsieh/skill-arena@{{ .Tag }}
+    ```

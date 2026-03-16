@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build
+        run: go build ./...
+
+      - name: Test
+        run: go test ./...
+
+  e2e:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && vars.SKILL_ARENA_API_KEY != ''
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: E2E tests (unit, no API key needed)
+        run: go test -tags e2e ./e2e/
+
+      - name: E2E tests (integration)
+        if: secrets.SKILL_ARENA_API_KEY != ''
+        run: go test -tags e2e -v -run "TestEvalRun" ./e2e/
+        env:
+          SKILL_ARENA_API_KEY: ${{ secrets.SKILL_ARENA_API_KEY }}
+          SKILL_ARENA_MODEL: claude-haiku-4-5-20251001
