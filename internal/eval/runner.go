@@ -34,6 +34,10 @@ type SideResult struct {
 
 const baseSystemPrompt = "You are a helpful AI assistant."
 
+// maxConcurrentCases limits how many eval cases run in parallel.
+// Each case fires 2 requests (with/without), so total connections = maxConcurrentCases * 2.
+const maxConcurrentCases = 3
+
 // Run executes the full with/without eval for a skill and returns all results.
 func Run(ctx context.Context, skillDir string, cfg *config.Config) ([]RunResult, error) {
 	skillContent, err := skill.ReadSkillContent(skillDir)
@@ -59,10 +63,15 @@ func Run(ctx context.Context, skillDir string, cfg *config.Config) ([]RunResult,
 	var wg sync.WaitGroup
 	var runErr error
 
+	// Semaphore: cap concurrent cases to avoid API rate limits.
+	sem := make(chan struct{}, maxConcurrentCases)
+
 	for i, evalCase := range ef.Evals {
 		wg.Add(1)
 		go func(idx int, ec skill.EvalCase) {
 			defer wg.Done()
+			sem <- struct{}{}        // acquire
+			defer func() { <-sem }() // release
 
 			result, err := runEvalCase(ctx, ec, skillContent, ef, client, dmp)
 			mu.Lock()
