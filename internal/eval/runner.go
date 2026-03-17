@@ -50,6 +50,17 @@ func Run(ctx context.Context, skillDir string, cfg *config.Config) ([]RunResult,
 		return nil, fmt.Errorf("reading eval file: %w", err)
 	}
 
+	// Filter out unfilled TODO template cases before running.
+	var activeCases []skill.EvalCase
+	for _, ec := range ef.Evals {
+		if isTODOCase(ec) {
+			fmt.Printf("  ⚠  Skipping case %d [%s]: prompt is a TODO placeholder — fill it in or run 'eval generate'\n", ec.ID, ec.Category)
+		} else {
+			activeCases = append(activeCases, ec)
+		}
+	}
+	ef.Evals = activeCases
+
 	// Gate: check required categories
 	if err := checkRequiredCategories(ef); err != nil {
 		return nil, err
@@ -177,11 +188,19 @@ func evaluateSide(
 	return side
 }
 
+// isTODOCase returns true if the eval case is an unfilled template placeholder.
+func isTODOCase(ec skill.EvalCase) bool {
+	return strings.HasPrefix(strings.TrimSpace(ec.Prompt), "[TODO")
+}
+
 // checkRequiredCategories verifies that all required categories are present in the eval file.
+// TODO template cases are excluded from the count.
 func checkRequiredCategories(ef *skill.EvalFile) error {
 	categories := map[string]bool{}
 	for _, ec := range ef.Evals {
-		categories[ec.Category] = true
+		if !isTODOCase(ec) {
+			categories[ec.Category] = true
+		}
 	}
 
 	var required []string
@@ -210,10 +229,16 @@ func checkRequiredCategories(ef *skill.EvalFile) error {
 		)
 	}
 
-	if len(ef.Evals) < 3 {
+	realCount := 0
+	for _, ec := range ef.Evals {
+		if !isTODOCase(ec) {
+			realCount++
+		}
+	}
+	if realCount < 3 {
 		return fmt.Errorf(
-			"eval run blocked: need at least 3 eval cases, found %d\n\nRun 'skill-arena eval add %s' to add more cases.",
-			len(ef.Evals), ef.SkillName,
+			"eval run blocked: need at least 3 filled eval cases, found %d\n\nRun 'skill-arena eval generate %s' or 'skill-arena eval add %s' to add cases.",
+			realCount, ef.SkillName, ef.SkillName,
 		)
 	}
 

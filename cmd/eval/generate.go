@@ -22,9 +22,10 @@ var generateCmd = &cobra.Command{
 }
 
 type suggestedCase struct {
-	Category       string `json:"category"`
-	Prompt         string `json:"prompt"`
-	ExpectedOutput string `json:"expected_output"`
+	Category       string           `json:"category"`
+	Prompt         string           `json:"prompt"`
+	ExpectedOutput string           `json:"expected_output"`
+	Assertions     []skill.Assertion `json:"assertions,omitempty"`
 }
 
 func runGenerate(cmd *cobra.Command, args []string) error {
@@ -116,12 +117,16 @@ func runGenerate(cmd *cobra.Command, args []string) error {
 		if !selected[i] {
 			continue
 		}
+		assertions := s.Assertions
+		if len(assertions) == 0 {
+			assertions = defaultAssertions(ef.SkillType)
+		}
 		ec := skill.EvalCase{
 			ID:             nextID,
 			Category:       s.Category,
 			Prompt:         s.Prompt,
 			ExpectedOutput: s.ExpectedOutput,
-			Assertions:     defaultAssertions(ef.SkillType),
+			Assertions:     assertions,
 		}
 		ef.Evals = append(ef.Evals, ec)
 		added = append(added, ec)
@@ -146,8 +151,18 @@ Each case should test different aspects: core functionality, edge cases, error h
 Always respond with a valid JSON array and nothing else (no markdown, no explanation).`
 
 	requiredCats := "core, edge, error_diagnosis"
+	assertionExample := `[
+        {"type": "syntax_valid"},
+        {"type": "contains", "value": "specific_function_or_keyword"},
+        {"type": "quality", "rubric": "Does the response correctly implement X with proper error handling?"}
+      ]`
 	if skillType == skill.SkillTypeWorkflow {
 		requiredCats = "core, partial, edge"
+		assertionExample = `[
+        {"type": "all_steps_covered", "steps": ["step A", "step B", "step C"]},
+        {"type": "step_order", "before": "step A", "after": "step B"},
+        {"type": "quality", "rubric": "Does the response follow the prescribed workflow order?"}
+      ]`
 	}
 
 	userPrompt := fmt.Sprintf(`Given the following SKILL.md content, generate 4-6 diverse eval cases that stress-test its claimed capabilities.
@@ -155,17 +170,24 @@ Always respond with a valid JSON array and nothing else (no markdown, no explana
 Skill type: %s
 Required categories (include at least one of each): %s
 
+For EACH case, include specific assertions derived from the expected_output — not generic placeholders.
+- "contains": use a concrete keyword, function name, or phrase that MUST appear in a correct answer
+- "quality" rubric: describe exactly what makes a good response for THIS specific prompt
+- "all_steps_covered": list the actual step names from the workflow, not generic labels
+- "syntax_valid": include for any case expecting code output
+
 Return a JSON array in this exact format:
 [
   {
     "category": "core",
     "prompt": "...",
-    "expected_output": "..."
+    "expected_output": "...",
+    "assertions": %s
   }
 ]
 
 SKILL.md:
-%s`, skillType, requiredCats, skillContent)
+%s`, skillType, requiredCats, assertionExample, skillContent)
 
 	resp, err := client.Complete(ctx, systemPrompt, userPrompt)
 	if err != nil {
