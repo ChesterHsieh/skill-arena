@@ -27,20 +27,36 @@ add_to_path() {
   local rc_file
   rc_file=$(detect_shell_rc)
 
-  # Already in PATH — nothing to do
-  if echo "$PATH" | tr ':' '\n' | grep -qx "$dir"; then
+  # Portable form: replace leading $HOME with the literal string $HOME
+  # so the rc file stays portable across usernames.
+  local portable_dir="${dir/#$HOME/\$HOME}"
+
+  # Already in PATH — check both the absolute path and $HOME-relative form.
+  # $PATH is always expanded by the shell, so compare against absolute $dir.
+  local entry
+  while IFS= read -r entry; do
+    # Expand $HOME / ~ in each entry before comparing
+    local expanded="${entry/#\~/$HOME}"
+    expanded="${expanded/\$HOME/$HOME}"
+    if [ "$expanded" = "$dir" ]; then
+      return 0
+    fi
+  done <<< "$(echo "$PATH" | tr ':' '\n')"
+
+  # Also skip if the portable form is already written in the rc file
+  if [ -n "$rc_file" ] && [ -f "$rc_file" ] && grep -qF "$portable_dir" "$rc_file" 2>/dev/null; then
     return 0
   fi
 
   if [ -z "$rc_file" ]; then
     echo ""
     echo "  Could not detect shell. Add this manually:"
-    echo "    export PATH=\"\$PATH:${dir}\""
+    echo "    export PATH=\"\$PATH:${portable_dir}\""
     return 0
   fi
 
   echo ""
-  printf "  Add '%s' to PATH in %s? [Y/n] " "$dir" "$rc_file"
+  printf "  Add '%s' to PATH in %s? [Y/n] " "$portable_dir" "$rc_file"
 
   # Read answer — works both interactively and piped (curl | sh defaults to Y)
   local answer="Y"
@@ -54,16 +70,16 @@ add_to_path() {
       shell_name=$(basename "${SHELL:-sh}")
 
       if [ "$shell_name" = "fish" ]; then
-        echo "fish_add_path $dir" >> "$rc_file"
+        echo "fish_add_path $portable_dir" >> "$rc_file"
       else
-        printf '\nexport PATH="$PATH:%s"\n' "$dir" >> "$rc_file"
+        printf '\nexport PATH="$PATH:%s"\n' "$portable_dir" >> "$rc_file"
       fi
 
       echo "  ✓ Added to $rc_file"
       echo "  Run: source $rc_file  (or open a new terminal)"
       ;;
     *)
-      echo "  Skipped. Add manually: export PATH=\"\$PATH:${dir}\""
+      echo "  Skipped. Add manually: export PATH=\"\$PATH:${portable_dir}\""
       ;;
   esac
 }
