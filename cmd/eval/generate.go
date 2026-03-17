@@ -183,21 +183,22 @@ SKILL.md:
 	return suggestions, nil
 }
 
-// extractJSON strips ```json ... ``` fences if present, otherwise returns the raw string.
+// extractJSON strips ```json ... ``` fences if present, then extracts the
+// outermost [...] array from the result. Handles all common model output formats.
 func extractJSON(s string) string {
 	s = strings.TrimSpace(s)
 
-	// Try to extract from ```json ... ``` block
-	re := regexp.MustCompile("(?s)```(?:json)?\\s*(\n|\\r\\n)(.*?)```")
-	if m := re.FindStringSubmatch(s); len(m) > 2 {
-		return strings.TrimSpace(m[2])
+	// Strip code fences (```json, ```JSON, ``` — any variant, optional newline after)
+	re := regexp.MustCompile("(?si)```(?:json)?\r?\n?(.*?)```")
+	if m := re.FindStringSubmatch(s); len(m) > 1 {
+		s = strings.TrimSpace(m[1])
 	}
 
-	// Find the first '[' and last ']'
+	// Extract the outermost [...] array
 	start := strings.Index(s, "[")
 	end := strings.LastIndex(s, "]")
 	if start >= 0 && end > start {
-		return s[start : end+1]
+		return strings.TrimSpace(s[start : end+1])
 	}
 
 	return s
