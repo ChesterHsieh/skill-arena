@@ -16,7 +16,11 @@ var rootCmd = &cobra.Command{
 
 // Execute runs the root command with build-time version info.
 func Execute(version, commit, date string) {
-	rootCmd.Version = fmt.Sprintf("%s (commit %s, built %s)", version, commit, date)
+	versionStr := version
+	if commit != "none" && date != "unknown" {
+		versionStr = fmt.Sprintf("%s (commit %s, built %s)", version, commit, date)
+	}
+	rootCmd.Version = versionStr
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
