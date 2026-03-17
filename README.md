@@ -53,6 +53,14 @@ go build -o skill-arena .
 mv skill-arena /usr/local/bin/
 ```
 
+### Uninstall
+
+```bash
+curl -sSL https://raw.githubusercontent.com/ChesterHsieh/skill-arena/main/uninstall.sh | sh
+```
+
+Removes the binary from `/usr/local/bin`, `~/.local/bin`, and `$(go env GOPATH)/bin`. Config (`~/.skill-arena/`) and eval history (`.skill-arena/`) are kept — remove manually if desired.
+
 ### Claude Code (no binary needed)
 
 If you use Claude Code, clone this repo and open it as your project. The `/skill` slash command is included in `.claude/commands/skill.md` — Claude handles all commands natively by reading and writing files directly. No Go, no binary, no install.
