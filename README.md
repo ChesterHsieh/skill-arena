@@ -53,17 +53,18 @@ go build -o skill-arena .
 mv skill-arena /usr/local/bin/
 ```
 
-### Claude Code (no install needed)
+### Claude Code (no binary needed)
 
-If you use Claude Code, add this repo as your project and use the `/skill` slash command — Claude will run `skill-arena` commands on your behalf, or handle interactive commands (like `init`) directly without requiring the binary.
+If you use Claude Code, clone this repo and open it as your project. The `/skill` slash command is included in `.claude/commands/skill.md` — Claude handles all commands natively by reading and writing files directly. No Go, no binary, no install.
 
 ```
+/skill init my-skill
 /skill validate flink-skill
 /skill eval run flink-skill
 /skill eval history flink-skill
 ```
 
-To enable: the `.claude/commands/skill.md` command is included in this repo. Clone the repo and open it in Claude Code.
+Claude performs `validate` by checking SKILL.md rules itself, and `eval run` by running the with/without comparison using its own inference — no external API calls needed.
 
 ---
 
