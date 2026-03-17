@@ -327,7 +327,7 @@ See [`e2e/README.md`](./e2e/README.md) for the full test coverage table.
 ## Commands reference
 
 ```
-skill-arena init <name>               Scaffold a new skill (4 SOP questions)
+skill-arena init <name>               Scaffold a new skill (4 SOP questions + LLM structuring)
 skill-arena edit <name>               Open SKILL.md in $EDITOR
 skill-arena validate <name>           Check SOP compliance (6 rules)
 skill-arena config                    Set API endpoint, key, and model
@@ -337,3 +337,5 @@ skill-arena eval generate <name>      LLM suggests eval cases from SKILL.md
 skill-arena eval run <name>           Run with/without comparison
 skill-arena eval history <name>       Show past eval runs and trend
 ```
+
+Full reference: [docs/COMMANDS.md](./docs/COMMANDS.md) · [docs/CONFIG.md](./docs/CONFIG.md) · [docs/CONTRIBUTING.md](./docs/CONTRIBUTING.md)
