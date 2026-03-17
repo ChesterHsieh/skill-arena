@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -8,6 +9,8 @@ import (
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/spf13/cobra"
+	"github.com/ChesterHsieh/skill-arena/internal/config"
+	"github.com/ChesterHsieh/skill-arena/internal/llm"
 	"github.com/ChesterHsieh/skill-arena/internal/skill"
 )
 
@@ -73,8 +76,24 @@ func runInit(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Write SKILL.md
-	skillMD := skill.GenerateSkillMD(answers)
+	// Generate SKILL.md — use LLM if API key is configured, else fall back to template
+	var skillMD string
+	cfg, cfgErr := config.Load()
+	if cfgErr == nil && cfg.APIKey != "" {
+		fmt.Printf("\n  Generating structured SKILL.md using SOP guidelines...\n")
+		client := llm.NewClient(cfg)
+		var usedLLM bool
+		var genErr error
+		skillMD, usedLLM, genErr = skill.GenerateSkillMDWithLLM(context.Background(), answers, client)
+		if genErr != nil {
+			fmt.Printf("  ⚠ LLM generation failed (%v), using template instead\n", genErr)
+		} else if usedLLM {
+			fmt.Printf("  ✓ SKILL.md structured by LLM (model: %s)\n", cfg.DefaultModel)
+		}
+	} else {
+		skillMD = skill.GenerateSkillMD(answers)
+	}
+
 	skillMDPath := filepath.Join(skill.SkillDir(name), "SKILL.md")
 	if err := os.WriteFile(skillMDPath, []byte(skillMD), 0o644); err != nil {
 		return fmt.Errorf("writing SKILL.md: %w", err)
