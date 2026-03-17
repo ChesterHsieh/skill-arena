@@ -1,8 +1,6 @@
 name: CI
 
 on:
-  push:
-    branches: [main]
   pull_request:
     branches: [main]
 
@@ -25,7 +23,7 @@ jobs:
 
   e2e:
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && vars.SKILL_ARENA_API_KEY != ''
+    if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
 
