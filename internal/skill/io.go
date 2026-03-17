@@ -10,9 +10,29 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// SkillsDir returns the .claude/skills path relative to the current working directory.
+// SkillsDir walks up from the current working directory to find the nearest
+// .claude/skills directory, mirroring how git locates .git. Returns the
+// absolute path if found, or ".claude/skills" relative to cwd as a fallback
+// (preserving behaviour for init/scaffold which creates a new project tree).
 func SkillsDir() string {
-	return filepath.Join(".claude", "skills")
+	cwd, err := os.Getwd()
+	if err != nil {
+		return filepath.Join(".claude", "skills")
+	}
+	dir := cwd
+	for {
+		candidate := filepath.Join(dir, ".claude", "skills")
+		if info, err := os.Stat(candidate); err == nil && info.IsDir() {
+			return candidate
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break // reached filesystem root
+		}
+		dir = parent
+	}
+	// Not found — return cwd-relative path so callers (e.g. init) can create it.
+	return filepath.Join(cwd, ".claude", "skills")
 }
 
 // SkillDir returns the directory for a named skill.
